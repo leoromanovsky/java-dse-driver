@@ -342,3 +342,31 @@ specifying a global graph name at the time of building the `DseCluster`.
 
 [setGraphName]: http://docs.datastax.com/en/drivers/java-dse/1.2/com/datastax/driver/dse/graph/GraphStatement.html#setGraphName-java.lang.String-
 [withGraphOptions]: http://docs.datastax.com/en/drivers/java-dse/1.2/com/datastax/driver/dse/DseCluster.Builder.html#withGraphOptions-com.datastax.driver.dse.graph.GraphOptions-
+
+### I am encountering `BusyPoolException`, what does this mean and how do I avoid it?
+
+Often while writing a bulk loading program or an application that does many concurrent operations a user may encounter
+exceptions such as the following:
+
+> com.datastax.driver.core.exceptions.BusyPoolException: [/X.X.X.X] Pool is busy (no available connection and the queue
+> has reached its max size 256)
+
+This typically means that your application is submitting too many concurrent requests and not enforcing any limitation
+on the number of requests that are being processed at once.  A common mistake users might make is firing off a bunch
+of queries using `executeAsync` and not waiting for them to complete before submitting more.
+
+One simple approach to remedying this is to use something like a [Semaphore] to limit the number of concurrent
+`executeAsync` requests at a time.  Alternatively, one could submit requests X at a time and collect the returned
+`ResultSetFuture`s from `executeAsync` and use [Futures.allAsList] and wait on completion of the resulting future
+before submitting the next batch.
+
+See the [Acquisition queue] section of the Pooling section in the manual for explanation of how the driver enqueues
+requests when connections are over-utilized.
+
+[Blobs.java]: https://github.com/datastax/java-driver/tree/3.3.0/driver-examples/src/main/java/com/datastax/driver/examples/datatypes/Blobs.java
+[CASSANDRA-7304]: https://issues.apache.org/jira/browse/CASSANDRA-7304
+[Parameters and Binding]: ../manual/statements/prepared/#parameters-and-binding
+[Mapper options]: ../manual/object_mapper/using/#mapper-options
+[Acquisition queue]: ../manual/pooling/#acquisition-queue
+[Semaphore]: https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Semaphore.html
+[Futures.allAsList]: https://google.github.io/guava/releases/19.0/api/docs/com/google/common/util/concurrent/Futures.html#allAsList(java.lang.Iterable)

@@ -10,6 +10,9 @@
 - [bug] JAVA-1472: Creating more than one DseCluster in single process produces WARNs in logs.
 - [new feature] JAVA-1475: Allow users to implement DSLs with GLVs.
 
+Merged from OSS 3.x:
+
+- [documentation] JAVA-1550: FAQ Entry for BusyPoolException.
 
 ### 1.3.0
 
