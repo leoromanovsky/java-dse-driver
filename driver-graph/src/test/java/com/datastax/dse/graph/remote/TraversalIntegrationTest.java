@@ -456,7 +456,7 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
      */
     @Test(groups = "short")
     public void should_allow_use_of_dsl() throws Exception {
-        SocialTraversalSource gSocial = DseGraph.traversal(SocialTraversalSource.class);
+        SocialTraversalSource gSocial = DseGraph.traversal(session(), SocialTraversalSource.class);
         List<Vertex> vertices = gSocial.persons("marko").knows("vadas").toList();
         assertThat(vertices.size()).isEqualTo(1);
         assertThat(vertices.get(0))

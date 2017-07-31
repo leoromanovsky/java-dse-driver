@@ -13,15 +13,14 @@ import com.datastax.driver.dse.graph.Edge;
 import com.datastax.driver.dse.graph.Vertex;
 import com.datastax.driver.dse.graph.VertexProperty;
 import com.datastax.dse.graph.CCMTinkerPopTestsSupport;
-import com.datastax.dse.graph.TinkerGraphAssertions;
 import com.datastax.dse.graph.api.DseGraph;
 import com.datastax.dse.graph.internal.utils.GraphSONUtils;
+import com.datastax.dse.graph.remote.SocialTraversalSource;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
-import org.apache.tinkerpop.gremlin.structure.*;
 import org.testng.annotations.Test;
 
 import java.util.Iterator;
@@ -566,7 +565,7 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
      */
     @Test(groups = "short")
     public void should_allow_use_of_dsl() throws Exception {
-        com.datastax.dse.graph.remote.SocialTraversalSource gSocial = DseGraph.traversal(session(), com.datastax.dse.graph.remote.SocialTraversalSource.class);
+        SocialTraversalSource gSocial = DseGraph.traversal(SocialTraversalSource.class);
 
         GraphStatement gs = DseGraph.statementFromTraversal(gSocial.persons("marko").knows("vadas"));
 
