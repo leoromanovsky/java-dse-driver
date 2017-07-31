@@ -19,13 +19,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 /**
  * Default implementation of {@link DseSession} interface.
  */
-class DefaultDseSession implements DseSession, ContinuousPagingSession {
+class DefaultDseSession extends AbstractSession implements DseSession, ContinuousPagingSession {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultDseSession.class);
 
@@ -290,5 +291,15 @@ class DefaultDseSession implements DseSession, ContinuousPagingSession {
     @Override
     public void close() {
         delegate.close();
+    }
+
+    @Override
+    protected ListenableFuture<PreparedStatement> prepareAsync(String query, Map<String, ByteBuffer> customPayload) {
+        throw new IllegalStateException("This method should never be called on DefaultDseSession");
+    }
+
+    @Override
+    protected Cluster getConcreteCluster() {
+        return dseCluster.delegate();
     }
 }

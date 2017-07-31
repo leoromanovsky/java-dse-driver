@@ -175,6 +175,16 @@ public abstract class AbstractSession implements Session, ContinuousPagingSessio
     }
 
     /**
+     * Return the concrete {@link Cluster} instance driving the {@link Session}.
+     * This is useful to override in cases where the Session implementation is backed by {@link DelegatingCluster}.
+     *
+     * @return the concrete cluster instance backing this session.
+     */
+    protected Cluster getConcreteCluster() {
+        return getCluster();
+    }
+
+    /**
      * Checks that the current thread is not one of the Netty I/O threads used by the driver.
      * <p/>
      * This method is called from all the synchronous methods of this class to prevent deadlock issues.
@@ -189,7 +199,7 @@ public abstract class AbstractSession implements Session, ContinuousPagingSessio
      * @throws IllegalStateException if the current thread is one of the Netty I/O thread used by the driver.
      */
     public void checkNotInEventLoop() {
-        Connection.Factory connectionFactory = getCluster().manager.connectionFactory;
+        Connection.Factory connectionFactory = getConcreteCluster().manager.connectionFactory;
         if (!CHECK_IO_DEADLOCKS || connectionFactory == null)
             return;
         for (EventExecutor executor : connectionFactory.eventLoopGroup) {

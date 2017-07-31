@@ -11,6 +11,7 @@ import com.datastax.driver.core.utils.CassandraVersion;
 import com.datastax.driver.core.utils.MoreObjects;
 import com.datastax.driver.core.utils.UUIDs;
 import com.datastax.driver.mapping.annotations.*;
+import com.datastax.driver.dse.CCMDseTestsSupport;
 import com.google.common.base.Function;
 import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.Futures;
@@ -36,7 +37,7 @@ import static org.testng.Assert.assertTrue;
  * Basic tests for the mapping module.
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
-public class MapperTest extends CCMTestsSupport {
+public class MapperTest extends CCMDseTestsSupport {
 
     Logger logger = LoggerFactory.getLogger(MapperTest.class);
 
