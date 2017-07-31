@@ -8,6 +8,7 @@ package com.datastax.driver.dse;
 
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.AuthenticationException;
+import com.datastax.driver.core.exceptions.CodecNotFoundException;
 import com.datastax.driver.core.exceptions.InvalidQueryException;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.policies.*;
@@ -73,6 +74,8 @@ public class DseCluster extends DelegatingCluster {
 
         private boolean geospatialCodecs = true;
 
+        private boolean searchCodecs = true;
+
         public Builder() {
             this.withLoadBalancingPolicy(DseConfiguration.defaultLoadBalancingPolicy());
         }
@@ -102,6 +105,22 @@ public class DseCluster extends DelegatingCluster {
          */
         public DseCluster.Builder withoutGeospatialCodecs() {
             this.geospatialCodecs = false;
+            return this;
+        }
+
+        /**
+         * Prevents the registration of search codecs with the
+         * new cluster.
+         * <p/>
+         * Currently only {@link DateRangeCodec} is affected by this method.
+         * If this method is not called, this codec will be registered by default.
+         *
+         * @return this builder (for method chaining).
+         * @see CodecRegistry
+         * @see TypeCodec
+         */
+        public DseCluster.Builder withoutSearchCodecs() {
+            this.searchCodecs = false;
             return this;
         }
 
@@ -260,10 +279,13 @@ public class DseCluster extends DelegatingCluster {
         @Override
         public DseCluster build() {
             DseCluster dseCluster = new DseCluster(super.build());
-            if (geospatialCodecs)
-                registerGeospatialCodecs(dseCluster);
-            dseCluster.getConfiguration().getCodecRegistry().register(
-                    DateRangeCodec.INSTANCE);
+            CodecRegistry codecRegistry = dseCluster.getConfiguration().getCodecRegistry();
+            if (geospatialCodecs) {
+                registerGeospatialCodecs(codecRegistry);
+            }
+            if (searchCodecs) {
+                registerSearchCodecs(codecRegistry);
+            }
             return dseCluster;
         }
 
@@ -274,11 +296,22 @@ public class DseCluster extends DelegatingCluster {
             );
         }
 
-        private static void registerGeospatialCodecs(DseCluster dseCluster) {
-            dseCluster.getConfiguration().getCodecRegistry().register(
-                    LineStringCodec.INSTANCE,
-                    PointCodec.INSTANCE,
-                    PolygonCodec.INSTANCE);
+        private static void registerGeospatialCodecs(CodecRegistry codecRegistry) {
+            registerCodecIfNotPresent(codecRegistry, LineStringCodec.INSTANCE);
+            registerCodecIfNotPresent(codecRegistry, PointCodec.INSTANCE);
+            registerCodecIfNotPresent(codecRegistry, PolygonCodec.INSTANCE);
+        }
+
+        private static void registerSearchCodecs(CodecRegistry codecRegistry) {
+            registerCodecIfNotPresent(codecRegistry, DateRangeCodec.INSTANCE);
+        }
+
+        private static void registerCodecIfNotPresent(CodecRegistry codecRegistry, TypeCodec<?> codec) {
+            try {
+                codecRegistry.codecFor(codec.getCqlType(), codec.getJavaType());
+            } catch (CodecNotFoundException e) {
+                codecRegistry.register(codec);
+            }
         }
 
     }
