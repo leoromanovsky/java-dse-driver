@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.4.0 (in progress)
+
+- [new feature] JAVA-1475: Allow users to implement DSLs with GLVs.
+
+
 ### 1.3.0
 
 - [new feature] JAVA-1329: Use "graph-results" payload option for the GraphSON format.

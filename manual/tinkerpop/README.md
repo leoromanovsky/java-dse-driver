@@ -112,7 +112,40 @@ assert v3.size() == 1;
 assert v1 == v3.get(0);
 ```
 
-Please check out the Javadoc of the [Geo][Geo] and [Search][Search] classes for more information. 
+Please check out the Javadoc of the [Geo][Geo] and [Search][Search] classes for more information.
+ 
+### Gremlin Domain Specific Languages (DSL)
+
+The Gremlin language can be extended by users to match the user's specific use cases and make
+the development of graph traversals easier.
+
+Users may require a `GraphTraversal` class that exposes their domain-specific grammar and methods
+and need this new grammar via the Fluent API.
+
+As of DSE Java driver 1.4.0, the [DseGraph][DseGraph] class exposes new additional utilities 
+to create a traversal source equipped with custom user-defined traversal methods easily.
+
+After generating a custom `GraphTraversalSource` as explained in the [TinkerPop documentation][DSL-tp-docs], 
+users may use it directly to create a `GraphStatement` out of a traversal, or iterate a 
+connected traversal.
+
+Here's an example using `GraphStatement`s and explicit execution through the `DseSession`:
+
+```java
+// see TinkerPop documentation link for the generation of SocialTraversalSource
+SocialTraversalSource gSocial = DseGraph.traversal(SocialTraversalSource.class);
+
+GraphStatement gs = DseGraph.statementFromTraversal(gSocial.persons("marko").knows("vadas"));
+
+GraphResultSet rs = dseSession.executeGraph(gs);
+```
+
+Using the direct iteration system from a **connected** TinkerPop custom traversal source:
+
+```java
+SocialTraversalSource gSocial = DseGraph.traversal(dseSession, SocialTraversalSource.class);
+List<Vertex> vertices = gSocial.persons("marko").knows("vadas").toList();
+```
 
 ### Programmatic Schema API
 
@@ -127,3 +160,5 @@ Available soon!...
 [Search]: http://docs.datastax.com/en/drivers/java-dse/1.2/com/datastax/dse/graph/api/predicates/Search.html
 [TerminalStep]: http://tinkerpop.apache.org/docs/current/reference/#terminal-steps
 [Traversal]: https://tinkerpop.apache.org/javadocs/3.2.4/full/org/apache/tinkerpop/gremlin/process/traversal/Traversal.html
+[DseGraph]: http://docs.datastax.com/en/drivers/java-dse/1.4/com/datastax/dse/graph/api/DseGraph.html
+[DSL-tp-docs]: http://tinkerpop.apache.org/docs/current/reference/#dsl

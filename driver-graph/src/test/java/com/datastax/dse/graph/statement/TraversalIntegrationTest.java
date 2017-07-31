@@ -9,12 +9,19 @@ package com.datastax.dse.graph.statement;
 import com.datastax.driver.core.TypeTokens;
 import com.datastax.driver.core.utils.DseVersion;
 import com.datastax.driver.dse.graph.*;
+import com.datastax.driver.dse.graph.Edge;
+import com.datastax.driver.dse.graph.Vertex;
+import com.datastax.driver.dse.graph.VertexProperty;
 import com.datastax.dse.graph.CCMTinkerPopTestsSupport;
+import com.datastax.dse.graph.TinkerGraphAssertions;
+import com.datastax.dse.graph.api.DseGraph;
 import com.datastax.dse.graph.internal.utils.GraphSONUtils;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
+import org.apache.tinkerpop.gremlin.structure.*;
 import org.testng.annotations.Test;
 
 import java.util.Iterator;
@@ -551,4 +558,27 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
             assertThat(vertex).asVertex();
         }
     }
+
+    /**
+     * A simple smoke test to ensure that a user can supply a custom {@link GraphTraversalSource} for use with DSLs.
+     *
+     * @test_category dse:graph
+     */
+    @Test(groups = "short")
+    public void should_allow_use_of_dsl() throws Exception {
+        com.datastax.dse.graph.remote.SocialTraversalSource gSocial = DseGraph.traversal(session(), com.datastax.dse.graph.remote.SocialTraversalSource.class);
+
+        GraphStatement gs = DseGraph.statementFromTraversal(gSocial.persons("marko").knows("vadas"));
+
+        GraphResultSet rs = session().executeGraph(gs);
+        List<GraphNode> results = rs.all();
+
+        assertThat(results.size()).isEqualTo(1);
+        assertThat(results.get(0).asVertex())
+                .hasProperty("name", "marko")
+                .hasProperty("age", 29)
+                .hasLabel("person");
+    }
+
+
 }

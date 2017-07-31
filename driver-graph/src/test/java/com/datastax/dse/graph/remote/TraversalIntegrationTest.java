@@ -11,9 +11,11 @@ import com.datastax.driver.core.utils.DseVersion;
 import com.datastax.driver.dse.graph.GraphFixtures;
 import com.datastax.dse.graph.CCMTinkerPopTestsSupport;
 import com.datastax.dse.graph.TinkerGraphExtractors;
+import com.datastax.dse.graph.api.DseGraph;
 import org.apache.tinkerpop.gremlin.process.traversal.Path;
 import org.apache.tinkerpop.gremlin.process.traversal.Traversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 import org.apache.tinkerpop.gremlin.process.traversal.step.util.Tree;
 import org.apache.tinkerpop.gremlin.structure.Edge;
@@ -445,6 +447,22 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
         } catch (ExecutionException e) {
             assertThat(e.getCause()).isInstanceOf(InvalidQueryException.class);
         }
+    }
+
+    /**
+     * A simple smoke test to ensure that a user can supply a custom {@link GraphTraversalSource} for use with DSLs.
+     *
+     * @test_category dse:graph
+     */
+    @Test(groups = "short")
+    public void should_allow_use_of_dsl() throws Exception {
+        SocialTraversalSource gSocial = DseGraph.traversal(SocialTraversalSource.class);
+        List<Vertex> vertices = gSocial.persons("marko").knows("vadas").toList();
+        assertThat(vertices.size()).isEqualTo(1);
+        assertThat(vertices.get(0))
+                .hasProperty("name", "marko")
+                .hasProperty("age", 29)
+                .hasLabel("person");
     }
 
     /**
