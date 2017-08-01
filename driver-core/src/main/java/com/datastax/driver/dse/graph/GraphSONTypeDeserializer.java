@@ -20,8 +20,8 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.databind.util.TokenBuffer;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * Contains main logic for the whole JSON to Java deserialization. Handles types embedded with the version 2.0 of GraphSON.
@@ -33,8 +33,8 @@ class GraphSONTypeDeserializer extends TypeDeserializerBase {
     private final JavaType baseType;
     private final TypeInfo typeInfo;
 
-    private static final JavaType mapJavaType = TypeFactory.defaultInstance().constructType(Map.class);
-    private static final JavaType arrayJavaType = TypeFactory.defaultInstance().constructType(List.class);
+    private static final JavaType mapJavaType = TypeFactory.defaultInstance().constructType(HashMap.class);
+    private static final JavaType arrayJavaType = TypeFactory.defaultInstance().constructType(ArrayList.class);
 
 
     GraphSONTypeDeserializer(final JavaType baseType, final TypeIdResolver idRes, final String typePropertyName,
@@ -155,14 +155,10 @@ class GraphSONTypeDeserializer extends TypeDeserializerBase {
                     JsonParser tokenParser;
 
                     if (valueDetectedFirst) {
-                        if (ContextualDelegateParser.class.isAssignableFrom(jsonParser.getClass())) {
-                            tokenParser = new ContextualDelegateParser(localCopy.asParser(), ((ContextualDelegateParser)jsonParser).getContext());
-                        } else {
-                            tokenParser = localCopy.asParser();
-                        }
+                        tokenParser = localCopy.asParser();
                         tokenParser.nextToken();
                     } else {
-                            tokenParser = jsonParser;
+                        tokenParser = jsonParser;
                     }
 
                     final Object value = jsonDeserializer.deserialize(tokenParser, deserializationContext);
@@ -194,12 +190,7 @@ class GraphSONTypeDeserializer extends TypeDeserializerBase {
         // an efficient structure made of TokenBuffer + JsonParserSequence/Concat.
         // Concatenate buf + localCopy + end of original content(jsonParser).
         final JsonParser[] concatenatedArray = {buf.asParser(), localCopy.asParser(), jsonParser};
-        final JsonParser parserToUse;
-        if (ContextualDelegateParser.class.isAssignableFrom(jsonParser.getClass())) {
-            parserToUse = new ContextualDelegateParser(new JsonParserConcat(concatenatedArray), ((ContextualDelegateParser)jsonParser).getContext());
-        } else {
-            parserToUse = new JsonParserConcat(concatenatedArray);
-        }
+        final JsonParser parserToUse = new JsonParserConcat(concatenatedArray);
         parserToUse.nextToken();
 
         // If a type has been specified in parameter, use it to find a deserializer and deserialize:

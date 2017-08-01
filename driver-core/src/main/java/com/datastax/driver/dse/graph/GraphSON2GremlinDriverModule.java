@@ -9,10 +9,15 @@ package com.datastax.driver.dse.graph;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.ser.std.StdScalarSerializer;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 
@@ -87,243 +92,203 @@ class GraphSON2GremlinDriverModule extends GraphSON2JacksonModule {
         }
     }
 
-    abstract static class ParentGremlinGraphSON2Deserializer<T extends Element> extends StdDeserializer<T> {
-
-        T parent;
-
-        protected ParentGremlinGraphSON2Deserializer(Class<T> clazz) {
-            super(clazz);
-        }
-
-        @Override
-        public T deserialize(final JsonParser jsonParser, final DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
-            parent = newObject();
-            JsonParser contextualParser = new GremlinContextualJsonParser(jsonParser, parent);
-
-            contextualParser.nextToken();
-            // This will automatically parse all typed stuff.
-            @SuppressWarnings("unchecked")
-            final Map<String, Object> mapData = deserializationContext.readValue(contextualParser, Map.class);
-
-            return initializeObject(mapData, parent);
-        }
-
-        abstract T newObject();
-
-        abstract T initializeObject(Map<String, Object> data, T objectToInitialize);
-    }
-
-    abstract static class ParentChildGremlinGraphSON2Deserializer<T extends Element> extends ParentGremlinGraphSON2Deserializer<T> {
-
-        Element parent;
-
-        protected ParentChildGremlinGraphSON2Deserializer(Class<T> clazz) {
-            super(clazz);
-        }
-
-        @Override
-        public T deserialize(final JsonParser jsonParser, final DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
-            parent = ContextualDelegateParser.class.isAssignableFrom(jsonParser.getClass())
-                    ? (Element) ((ContextualDelegateParser) jsonParser).getContext().get(0)
-                    : null;
-
-            T currentParent = newObject();
-            JsonParser contextualParser = new GremlinContextualJsonParser(jsonParser, currentParent);
-
-            contextualParser.nextToken();
-            // This will automatically parse all typed stuff.
-            @SuppressWarnings("unchecked")
-            final Map<String, Object> mapData = deserializationContext.readValue(contextualParser, Map.class);
-
-            return initializeObject(mapData, currentParent);
-        }
-    }
-
-    abstract static class ChildGremlinGraphSON2Deserializer<T> extends StdDeserializer<T> {
-
-        protected Element parent;
-
-        protected ChildGremlinGraphSON2Deserializer(Class<T> clazz) {
-            super(clazz);
-        }
-
-        @Override
-        public T deserialize(final JsonParser jsonParser, final DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
-            parent = ContextualDelegateParser.class.isAssignableFrom(jsonParser.getClass())
-                    ? (Element) ((ContextualDelegateParser) jsonParser).getContext().get(0)
-                    : null;
-
-            jsonParser.nextToken();
-            // This will automatically parse all typed stuff.
-            @SuppressWarnings("unchecked")
-            final Map<String, Object> mapData = deserializationContext.readValue(jsonParser, Map.class);
-
-            return createObject(mapData);
-        }
-
-        abstract T createObject(Map<String, Object> data);
-    }
-
-    final static class VertexGraphSON2Deserializer extends ParentGremlinGraphSON2Deserializer<Vertex> {
+    final static class VertexGraphSON2Deserializer extends StdDeserializer<Vertex> {
 
         VertexGraphSON2Deserializer() {
             super(Vertex.class);
         }
 
         @Override
-        Vertex newObject() {
-            return new DefaultVertex();
+        public Vertex deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
+            final DefaultVertex v = new DefaultVertex();
+            while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
+                if (jsonParser.getCurrentName().equals(GraphSONTokens.ID)) {
+                    jsonParser.nextToken();
+                    v.id = new ObjectGraphNode(deserializationContext.readValue(jsonParser, Object.class));
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.LABEL)) {
+                    jsonParser.nextToken();
+                    v.label = jsonParser.getText();
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.PROPERTIES)) {
+                    jsonParser.nextToken();
+                    ImmutableMultimap.Builder<String, GraphNode> builder = ImmutableMultimap.builder();
+                    while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
+                        jsonParser.nextToken();
+                        while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
+                            DefaultVertexProperty vp = (DefaultVertexProperty) deserializationContext.readValue(jsonParser, VertexProperty.class);
+                            vp.parent = v;
+                            builder.put(vp.getName(), new ObjectGraphNode(vp));
+                        }
+                    }
+                    v.properties = builder.build();
+                }
+            }
+            return v;
         }
 
-        @SuppressWarnings("unchecked")
         @Override
-        public Vertex initializeObject(final Map<String, Object> map, Vertex element) {
-            DefaultVertex vertex = (DefaultVertex) element;
-
-            vertex.id = new ObjectGraphNode(map.get("id"));
-            vertex.label = map.get("label").toString();
-
-            if (map.containsKey("properties")) {
-                ImmutableMultimap.Builder<String, GraphNode> builder = ImmutableMultimap.builder();
-                for (Map.Entry<String, List<VertexProperty>> propertyEntry : ((Map<String, List<VertexProperty>>) map.get("properties")).entrySet()) {
-                    for (VertexProperty vp : propertyEntry.getValue()) {
-                        builder.put(propertyEntry.getKey(), new ObjectGraphNode(vp));
-                    }
-                }
-                vertex.properties = builder.build();
-            }
-
-            return vertex;
+        public boolean isCachable() {
+            return true;
         }
     }
 
-    final static class VertexPropertyGraphSON2Deserializer extends ParentChildGremlinGraphSON2Deserializer<VertexProperty> {
+    final static class VertexPropertyGraphSON2Deserializer extends StdDeserializer<VertexProperty> {
 
         VertexPropertyGraphSON2Deserializer() {
             super(VertexProperty.class);
         }
 
         @Override
-        VertexProperty newObject() {
-            return new DefaultVertexProperty();
-        }
+        public VertexProperty deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
+            final DefaultVertexProperty vp = new DefaultVertexProperty();
 
-        @SuppressWarnings("unchecked")
-        @Override
-        public VertexProperty initializeObject(Map<String, Object> map, VertexProperty element) {
-            DefaultVertexProperty vp = (DefaultVertexProperty) element;
-
-            vp.id = new ObjectGraphNode(map.get("id"));
-            // DSE Graph includes VP's labels by default, but in theory the field in
-            // the protocol in TinkerPop is optional, so we might as well be prepared.
-            if (map.containsKey("label")) {
-                vp.label = map.get("label").toString();
-            }
-            vp.value = new ObjectGraphNode(map.get("value"));
-
-            if (map.containsKey("properties")) {
-                ImmutableMultimap.Builder<String, GraphNode> builder = ImmutableMultimap.builder();
-                for (Map.Entry<String, Object> propertyEntry : ((Map<String, Object>) map.get("properties")).entrySet()) {
-                    DefaultProperty prop = new DefaultProperty();
-                    prop.name = propertyEntry.getKey();
-                    prop.value = new ObjectGraphNode(propertyEntry.getValue());
-                    prop.parent = vp;
-                    builder.putAll(propertyEntry.getKey(), new ObjectGraphNode(prop));
+            while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
+                if (jsonParser.getCurrentName().equals(GraphSONTokens.ID)) {
+                    jsonParser.nextToken();
+                    vp.id = new ObjectGraphNode(deserializationContext.readValue(jsonParser, Object.class));
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.LABEL)) {
+                    jsonParser.nextToken();
+                    vp.label = jsonParser.getText();
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.VALUE)) {
+                    jsonParser.nextToken();
+                    vp.value = new ObjectGraphNode(deserializationContext.readValue(jsonParser, Object.class));
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.PROPERTIES)) {
+                    jsonParser.nextToken();
+                    ImmutableMultimap.Builder<String, GraphNode> builder = ImmutableMultimap.builder();
+                    while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
+                        final String key = jsonParser.getCurrentName();
+                        jsonParser.nextToken();
+                        final Object val = deserializationContext.readValue(jsonParser, Object.class);
+                        DefaultProperty prop = new DefaultProperty();
+                        prop.name = key;
+                        prop.value = new ObjectGraphNode(val);
+                        prop.parent = vp;
+                        builder.put(prop.name, new ObjectGraphNode(prop));
+                    }
+                    vp.properties = builder.build();
                 }
-                vp.properties = builder.build();
             }
-
-            vp.parent = (Vertex)parent;
-
             return vp;
         }
-    }
-
-    final static class PropertyGraphSON2Deserializer extends ChildGremlinGraphSON2Deserializer<Property> {
-
-        PropertyGraphSON2Deserializer() {
-            super(Property.class);
-        }
 
         @Override
-        public Property createObject(Map<String, Object> map) {
-            DefaultProperty prop = new DefaultProperty();
-
-            prop.name = map.get("key").toString();
-            prop.value = new ObjectGraphNode(map.get("value"));
-            prop.parent = parent;
-
-            return prop;
+        public boolean isCachable() {
+            return true;
         }
     }
 
-    final static class EdgeGraphSON2Deserializer extends ParentGremlinGraphSON2Deserializer<Edge> {
+    final static class EdgeGraphSON2Deserializer extends StdDeserializer<Edge> {
 
         EdgeGraphSON2Deserializer() {
             super(Edge.class);
         }
 
         @Override
-        Edge newObject() {
-            return new DefaultEdge();
+        public Edge deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
+            final DefaultEdge e = new DefaultEdge();
+            while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
+                if (jsonParser.getCurrentName().equals(GraphSONTokens.ID)) {
+                    jsonParser.nextToken();
+                    e.id = new ObjectGraphNode(deserializationContext.readValue(jsonParser, Object.class));
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.LABEL)) {
+                    jsonParser.nextToken();
+                    e.label = jsonParser.getText();
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.OUT)) {
+                    jsonParser.nextToken();
+                    e.outV = new ObjectGraphNode(deserializationContext.readValue(jsonParser, Object.class));
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.OUT_LABEL)) {
+                    jsonParser.nextToken();
+                    e.outVLabel = jsonParser.getText();
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.IN)) {
+                    jsonParser.nextToken();
+                    e.inV = new ObjectGraphNode(deserializationContext.readValue(jsonParser, Object.class));
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.IN_LABEL)) {
+                    jsonParser.nextToken();
+                    e.inVLabel = jsonParser.getText();
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.PROPERTIES)) {
+                    jsonParser.nextToken();
+                    ImmutableMultimap.Builder<String, GraphNode> builder = ImmutableMultimap.builder();
+                    while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
+                        jsonParser.nextToken();
+                        DefaultProperty prop = (DefaultProperty) deserializationContext.readValue(jsonParser, Property.class);
+                        prop.parent = e;
+                        builder.put(prop.name, new ObjectGraphNode(prop));
+                    }
+                    e.properties = builder.build();
+                }
+            }
+            return e;
         }
 
-        @SuppressWarnings("unchecked")
         @Override
-        public Edge initializeObject(Map<String, Object> map, Edge element) {
-            DefaultEdge edge = (DefaultEdge) element;
-
-            edge.id = new ObjectGraphNode(map.get("id"));
-            edge.label = map.get("label").toString();
-
-            if (map.containsKey("properties")) {
-                ImmutableMultimap.Builder<String, GraphNode> builder = ImmutableMultimap.builder();
-                for (Map.Entry<String, Property> propertyEntry : ((Map<String, Property>) map.get("properties")).entrySet()) {
-                    builder.putAll(propertyEntry.getKey(), new ObjectGraphNode(propertyEntry.getValue()));
-                }
-                edge.properties = builder.build();
-            }
-
-            edge.inV = new ObjectGraphNode(map.get("inV"));
-            // inVLabel might become redundant, we want to make sure we're resilient there.
-            if (map.containsKey("inVLabel"))
-                edge.inVLabel = map.get("inVLabel").toString();
-
-            edge.outV = new ObjectGraphNode(map.get("outV"));
-            // outVLabel might become redundant, we want to make sure we're resilient there.
-            if (map.containsKey("outVLabel"))
-                edge.outVLabel = map.get("outVLabel").toString();
-
-            return edge;
+        public boolean isCachable() {
+            return true;
         }
     }
 
-    final static class PathGraphSON2Deserializer extends AbstractObjectDeserializer<Path> {
+    final static class PropertyGraphSON2Deserializer extends StdDeserializer<Property> {
+        PropertyGraphSON2Deserializer() {
+            super(Property.class);
+        }
+
+        @Override
+        public Property deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
+            final DefaultProperty prop = new DefaultProperty();
+            while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
+                if (jsonParser.getCurrentName().equals(GraphSONTokens.KEY)) {
+                    jsonParser.nextToken();
+                    prop.name = jsonParser.getText();
+                } else if (jsonParser.getCurrentName().equals(GraphSONTokens.VALUE)) {
+                    jsonParser.nextToken();
+                    prop.value = new ObjectGraphNode(deserializationContext.readValue(jsonParser, Object.class));
+                }
+            }
+            return prop;
+        }
+
+        @Override
+        public boolean isCachable() {
+            return true;
+        }
+    }
+
+    final static class PathGraphSON2Deserializer extends StdDeserializer<Path> {
+        private static final JavaType setType = TypeFactory.defaultInstance().constructCollectionType(HashSet.class, String.class);
 
         PathGraphSON2Deserializer() {
             super(Path.class);
         }
 
         @Override
-        public Path createObject(Map<String, Object> map) {
-            DefaultPath path = new DefaultPath();
+        public Path deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) throws IOException, JsonProcessingException {
+            final JsonNode n = jsonParser.readValueAsTree();
+            final DefaultPath p = new DefaultPath();
 
-            path.labels = new ArrayList<Set<String>>();
+            final ArrayNode objects = (ArrayNode) n.get(GraphSONTokens.OBJECTS);
+            final ArrayNode labels = (ArrayNode) n.get(GraphSONTokens.LABELS);
 
-            @SuppressWarnings("unchecked")
-            List<List<String>> labels = (List<List<String>>) map.get("labels");
-            for (List<String> labelsSet : labels) {
-                path.labels.add(new HashSet<String>(labelsSet));
+            final List<GraphNode> objectsList = new ArrayList<GraphNode>();
+            final List<Set<String>> labelsList = new ArrayList<Set<String>>();
+
+            for (int i = 0; i < objects.size(); i++) {
+                final JsonParser po = objects.get(i).traverse();
+                po.nextToken();
+                final JsonParser pl = labels.get(i).traverse();
+                pl.nextToken();
+
+                objectsList.add(new ObjectGraphNode(deserializationContext.readValue(po, Object.class)));
+                labelsList.add((Set<String>)deserializationContext.readValue(pl, setType));
             }
+            p.objects = objectsList;
+            p.labels = labelsList;
 
-            path.objects = new ArrayList<GraphNode>();
+            return p;
+        }
 
-            @SuppressWarnings("unchecked")
-            List<Object> objects = (List<Object>) map.get("objects");
-            for (Object object : objects) {
-                path.objects.add(new ObjectGraphNode(object));
-            }
-            return path;
+        @Override
+        public boolean isCachable() {
+            return true;
         }
     }
+
+
 }

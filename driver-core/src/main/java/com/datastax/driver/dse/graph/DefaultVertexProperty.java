@@ -54,7 +54,7 @@ class DefaultVertexProperty extends DefaultElement implements VertexProperty {
                 ", properties=" + properties +
                 ", name=" + getName() +
                 ", value=" + value +
-                ", parent-id=" + parent.getId() +
+                ", parent-id=" + (parent != null ? parent.getId() : "null") +
                 '}';
     }
 }
