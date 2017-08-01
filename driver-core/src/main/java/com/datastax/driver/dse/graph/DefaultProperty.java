@@ -51,7 +51,7 @@ class DefaultProperty implements Property {
 
     @Override
     public String toString() {
-        return "DefaultProperty{" +
+        return "Property{" +
                 "name='" + name + '\'' +
                 ", value=" + value +
                 ", parent-id=" + (parent != null ? parent.getId() : "null") +

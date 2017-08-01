@@ -56,4 +56,12 @@ class DefaultVertex extends DefaultElement implements Vertex {
         return Iterators.unmodifiableIterator(Iterators.transform(properties.values().iterator(), GRAPH_NODE_TO_VERTEX_PROPERTY));
     }
 
+    @Override
+    public String toString() {
+        return "Vertex{" +
+                "id=" + id +
+                ", label='" + label + '\'' +
+                ", properties=" + properties +
+                '}';
+    }
 }

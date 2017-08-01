@@ -106,7 +106,7 @@ class DefaultPath implements Path {
 
     @Override
     public String toString() {
-        return "DefaultPath{" +
+        return "Path{" +
                 "labels=" + getLabels() +
                 ", objects=" + getObjects() +
                 '}';

@@ -44,7 +44,7 @@ class DefaultEdge extends DefaultElement implements Edge {
 
     @Override
     public String toString() {
-        return "DefaultEdge{" +
+        return "Edge{" +
                 "id=" + id +
                 ", label='" + label + '\'' +
                 ", properties=" + properties +

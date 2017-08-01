@@ -91,14 +91,4 @@ abstract class DefaultElement implements Element {
     public int hashCode() {
         return Objects.hashCode(getId());
     }
-
-    @Override
-    public String toString() {
-        return "DefaultElement{" +
-                "id=" + id +
-                ", label='" + label + '\'' +
-                ", properties=" + properties +
-                '}';
-    }
-
 }

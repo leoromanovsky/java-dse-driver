@@ -49,7 +49,7 @@ class DefaultVertexProperty extends DefaultElement implements VertexProperty {
 
     @Override
     public String toString() {
-        return "DefaultVertexProperty{" +
+        return "VertexProperty{" +
                 "id=" + id +
                 ", properties=" + properties +
                 ", name=" + getName() +
