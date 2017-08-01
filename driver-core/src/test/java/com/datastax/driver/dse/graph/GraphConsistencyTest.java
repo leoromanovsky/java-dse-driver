@@ -16,6 +16,8 @@ import com.datastax.driver.core.exceptions.UnavailableException;
 import com.datastax.driver.core.utils.DseVersion;
 import org.testng.annotations.Test;
 
+import java.util.List;
+
 import static com.datastax.driver.core.ConsistencyLevel.ALL;
 import static com.datastax.driver.core.ConsistencyLevel.ONE;
 import static com.datastax.driver.dse.graph.GraphAssertions.assertThat;
@@ -70,7 +72,7 @@ public class GraphConsistencyTest extends CCMGraphTestsSupport {
                 .setGraphWriteConsistencyLevel(ALL)
                 .setConsistencyLevel(ALL));
 
-        assertThat(result.getAvailableWithoutFetching()).isEqualTo(1);
+        assertThat(result.all().size()).isEqualTo(1);
     }
 
     /**
@@ -86,7 +88,7 @@ public class GraphConsistencyTest extends CCMGraphTestsSupport {
         GraphResultSet result = session().executeGraph(new SimpleGraphStatement("g.V().limit(1)")
                 .setConsistencyLevel(ONE));
 
-        assertThat(result.getAvailableWithoutFetching()).isEqualTo(1);
+        assertThat(result.all().size()).isEqualTo(1);
     }
 
     /**
@@ -142,8 +144,9 @@ public class GraphConsistencyTest extends CCMGraphTestsSupport {
                 .setGraphReadConsistencyLevel(ALL)
                 .setConsistencyLevel(ALL));
 
-        assertThat(result.getAvailableWithoutFetching()).isEqualTo(1);
-        assertThat(result.one()).asVertex().hasProperty("name", "don");
+        List<GraphNode> results = result.all();
+        assertThat(results.size()).isEqualTo(1);
+        assertThat(results.get(0)).asVertex().hasProperty("name", "don");
     }
 
     /**
@@ -159,8 +162,9 @@ public class GraphConsistencyTest extends CCMGraphTestsSupport {
         GraphResultSet result = session().executeGraph(new SimpleGraphStatement("graph.addVertex(label, 'person', 'name', 'don2', 'age', 37)")
                 .setConsistencyLevel(ONE));
 
-        assertThat(result.getAvailableWithoutFetching()).isEqualTo(1);
-        assertThat(result.one()).asVertex().hasProperty("name", "don2");
+        List<GraphNode> results = result.all();
+        assertThat(results.size()).isEqualTo(1);
+        assertThat(results.get(0)).asVertex().hasProperty("name", "don2");
     }
 
     /**

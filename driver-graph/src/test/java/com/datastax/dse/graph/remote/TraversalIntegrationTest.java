@@ -7,10 +7,12 @@
 package com.datastax.dse.graph.remote;
 
 import com.datastax.driver.core.exceptions.InvalidQueryException;
+import com.datastax.driver.core.VersionNumber;
 import com.datastax.driver.core.utils.DseVersion;
 import com.datastax.driver.dse.graph.GraphFixtures;
 import com.datastax.dse.graph.CCMTinkerPopTestsSupport;
 import com.datastax.dse.graph.TinkerGraphExtractors;
+import com.datastax.dse.graph.internal.utils.DseVersionCheckUtils;
 import com.datastax.dse.graph.api.DseGraph;
 import org.apache.tinkerpop.gremlin.process.traversal.Path;
 import org.apache.tinkerpop.gremlin.process.traversal.Traversal;
@@ -25,6 +27,8 @@ import org.apache.tinkerpop.gremlin.structure.VertexProperty;
 import org.assertj.core.api.Assertions;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +36,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+
 
 import static com.datastax.dse.graph.TinkerGraphAssertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -468,64 +473,71 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
     /**
      * Ensures that the given Path matches one of the exact traversals we'd expect for a person whom Marko
      * knows that has created software and what software that is.
-     * <p/>
+     * <p>
      * These paths should be:
      * <ul>
      * <li>marko -> knows -> josh -> created -> lop</li>
      * <li>marko -> knows -> josh -> created -> ripple</li>
      * </ul>
      */
-    private void validatePathObjects(Path path) {
+    public static void validatePathObjects(Path path) {
+
         // marko should be the origin point.
         assertThat(path)
                 .vertexAt(0)
                 .hasLabel("person")
-                .hasProperty("name", "marko")
-                .hasProperty("age", 29);
+        ;
 
         // there should be a 'knows' outgoing relationship between marko and josh.
         assertThat(path)
                 .edgeAt(1)
                 .hasLabel("knows")
-                .hasProperty("weight", 1.0f)
                 .hasOutVLabel("person")
-                .hasInVLabel("person");
+                .hasOutV((Vertex) path.objects().get(0))
+                .hasInVLabel("person")
+                .hasInV((Vertex) path.objects().get(2))
+        ;
 
-        // josh ...
+        // josh...
         assertThat(path)
                 .vertexAt(2)
                 .hasLabel("person")
-                .hasProperty("name", "josh")
-                .hasProperty("age", 32);
+        ;
 
-        if (path.<Vertex>get(4).property("name").value().equals("lop")) {
-            // there should b ea 'created' relationship between josh and lop.
-            assertThat(path)
-                    .edgeAt(3)
-                    .hasLabel("created")
-                    .hasProperty("weight", 0.4f)
-                    .hasOutVLabel("person")
-                    .hasInVLabel("software");
+        // there should be a 'created' relationship between josh and lop.
+        assertThat(path)
+                .edgeAt(3)
+                .hasLabel("created")
+                .hasOutVLabel("person")
+                .hasOutV((Vertex) path.objects().get(2))
+                .hasInVLabel("software")
+                .hasInV((Vertex) path.objects().get(4))
+        ;
 
-            assertThat(path)
-                    .vertexAt(4)
-                    .hasLabel("software")
-                    .hasProperty("name", "lop")
-                    .hasProperty("lang", "java");
-        } else {
-            // there should b ea 'created' relationship between josh and ripple.
-            assertThat(path)
-                    .edgeAt(3)
-                    .hasLabel("created")
-                    .hasProperty("weight", 1.0f)
-                    .hasOutVLabel("person")
-                    .hasInVLabel("software");
+        // lop..
+        assertThat(path)
+                .vertexAt(4)
+                .hasLabel("software")
+        ;
+    }
 
-            assertThat(path)
-                    .vertexAt(4)
-                    .hasLabel("software")
-                    .hasProperty("name", "ripple")
-                    .hasProperty("lang", "java");
-        }
+    /**
+     * Ensures that traversals with barriers (which return results bulked) contain the
+     * correct amount of end results.
+     * <p>
+     * This will fail if ran against DSE < 5.0.9 or DSE < 5.1.2.
+     */
+    @Test(groups = "short")
+    @DseVersion("5.0.9")
+    public void should_return_correct_results_when_bulked() {
+        DseVersionCheckUtils.checkDse51Version(ccm().getDSEVersion(), VersionNumber.parse("5.1.2"));
+
+        List<String> results = g.E().label().barrier().toList();
+        Collections.sort(results);
+
+        List<String> expected = Arrays.asList("knows", "created", "created", "knows", "created", "created");
+        Collections.sort(expected);
+
+        assertThat(results).isEqualTo(expected);
     }
 }

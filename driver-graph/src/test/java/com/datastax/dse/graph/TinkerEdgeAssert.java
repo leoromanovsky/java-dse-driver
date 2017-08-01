@@ -8,6 +8,7 @@ package com.datastax.dse.graph;
 
 import com.datastax.driver.core.Assertions;
 import org.apache.tinkerpop.gremlin.structure.Edge;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 public class TinkerEdgeAssert extends TinkerElementAssert<TinkerEdgeAssert, Edge> {
 
@@ -25,4 +26,13 @@ public class TinkerEdgeAssert extends TinkerElementAssert<TinkerEdgeAssert, Edge
         return myself;
     }
 
+    public TinkerEdgeAssert hasOutV(Vertex vertex) {
+        Assertions.assertThat(actual.outVertex()).isEqualTo(vertex);
+        return myself;
+    }
+
+    public TinkerEdgeAssert hasInV(Vertex vertex) {
+        Assertions.assertThat(actual.inVertex()).isEqualTo(vertex);
+        return myself;
+    }
 }

@@ -7,14 +7,15 @@
 package com.datastax.dse.graph.statement;
 
 import com.datastax.driver.core.TypeTokens;
+import com.datastax.driver.core.VersionNumber;
 import com.datastax.driver.core.utils.DseVersion;
 import com.datastax.driver.dse.graph.*;
 import com.datastax.driver.dse.graph.Edge;
 import com.datastax.driver.dse.graph.Vertex;
 import com.datastax.driver.dse.graph.VertexProperty;
 import com.datastax.dse.graph.CCMTinkerPopTestsSupport;
+import com.datastax.dse.graph.internal.utils.DseVersionCheckUtils;
 import com.datastax.dse.graph.api.DseGraph;
-import com.datastax.dse.graph.internal.utils.GraphSONUtils;
 import com.datastax.dse.graph.remote.SocialTraversalSource;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
@@ -23,9 +24,12 @@ import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSo
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.datastax.driver.dse.graph.GraphAssertions.assertThat;
 import static com.datastax.driver.dse.graph.GraphExtractors.fieldAs;
@@ -52,14 +56,17 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
                 statementFromTraversal(g.V().hasLabel("person").has("name", "marko"))
         );
 
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex marko = resultSet.one().asVertex();
+        List<GraphNode> results = resultSet.all();
+
+        assertThat(results.size()).isEqualTo(1);
+        Vertex marko = results.get(0).asVertex();
         assertThat(marko).hasProperty("name", "marko");
 
         resultSet = session().executeGraph(statementFromTraversal(g.V(marko.getId())));
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex marko2 = resultSet.one().asVertex();
 
+        results = resultSet.all();
+        assertThat(results.size()).isEqualTo(1);
+        Vertex marko2 = results.get(0).asVertex();
         // Ensure that the returned vertex is the same as the first.
         assertThat(marko2).isEqualTo(marko);
     }
@@ -77,13 +84,16 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
                 statementFromTraversal(g.E().has("weight", 0.2f))
         );
 
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Edge created = resultSet.one().asEdge();
+        List<GraphNode> results = resultSet.all();
+        assertThat(results.size()).isEqualTo(1);
+
+        Edge created = results.get(0).asEdge();
         assertThat(created).hasProperty("weight", 0.2f).hasInVLabel("software").hasOutVLabel("person");
 
         resultSet = session().executeGraph(statementFromTraversal(g.E(created.getId()).inV()));
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex lop = resultSet.one().asVertex();
+        results = resultSet.all();
+        assertThat(results.size()).isEqualTo(1);
+        Vertex lop = results.get(0).asVertex();
 
         assertThat(lop).hasLabel("software").hasProperty("name", "lop").hasProperty("lang", "java");
     }
@@ -100,8 +110,10 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
                 statementFromTraversal(g.V().hasLabel("person").has("name", "marko"))
         );
 
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex marko = resultSet.one().asVertex();
+        List<GraphNode> results = resultSet.all();
+        assertThat(results.size()).isEqualTo(1);
+
+        Vertex marko = results.get(0).asVertex();
         assertThat(marko).hasProperty("name", "marko");
 
         //@formatter:off
@@ -143,8 +155,8 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
         );
 
 
-        assertThat(rs.getAvailableWithoutFetching()).isEqualTo(2);
         List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(2);
 
         // Ensure that we got 'lop' and 'ripple' for property a.
         assertThat(results).extracting(fieldAs("a", String.class)).containsOnly("lop", "ripple");
@@ -187,7 +199,7 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
         GraphResultSet rs = session().executeGraph(
                 statementFromTraversal(g.V().hasLabel("notALabel"))
         );
-        assertThat(rs.getAvailableWithoutFetching()).isZero();
+        assertThat(rs.all().size()).isZero();
     }
 
     /**
@@ -198,9 +210,8 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
      */
     @Test(groups = "short")
     public void should_return_zero_results_graphson_2() {
+        session().getCluster().getConfiguration().getGraphOptions().setGraphSubProtocol(GraphProtocol.GRAPHSON_2_0);
         SimpleGraphStatement simpleGraphStatement = new SimpleGraphStatement("g.V().hasLabel('notALabel')");
-        simpleGraphStatement.setGraphInternalOption("graph-results", "graphson-2.0");
-        simpleGraphStatement.setTransformResultFunction(GraphSONUtils.ROW_TO_GRAPHSON2_TINKERPOP_OBJECTGRAPHNODE);
 
         GraphResultSet rs = session().executeGraph(simpleGraphStatement);
         assertThat(rs.one()).isNull();
@@ -306,10 +317,12 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
                         .path()
                 )
         );
-        assertThat(rs.getAvailableWithoutFetching()).isEqualTo(2);
-        for (GraphNode result : rs) {
+
+        List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(2);
+        for (GraphNode result : results) {
             Path path = result.asPath();
-            validatePathObjects(path);
+            PathAssert.validatePathObjects(path);
             assertThat(path.getLabels()).hasSize(5);
             assertThat(path)
                     .hasLabel(0, "a")
@@ -341,10 +354,11 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
                         .path()
                 )
         );
-        assertThat(rs.getAvailableWithoutFetching()).isEqualTo(2);
-        for (GraphNode result : rs) {
+        List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(2);
+        for (GraphNode result : results) {
             Path path = result.asPath();
-            validatePathObjects(path);
+            PathAssert.validatePathObjects(path);
             assertThat(path.getLabels()).hasSize(5);
             assertThat(path)
                     .hasLabel(0, "a")
@@ -374,97 +388,15 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
                         .path()
                 )
         );
-        assertThat(rs.getAvailableWithoutFetching()).isEqualTo(2);
-        for (GraphNode result : rs) {
+        List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(2);
+        for (GraphNode result : results) {
             Path path = result.asPath();
-            validatePathObjects(path);
+            PathAssert.validatePathObjects(path);
             assertThat(path.getLabels()).hasSize(5);
             for (int i = 0; i < 5; i++)
                 assertThat(path)
                         .hasNoLabel(i);
-        }
-    }
-
-    /**
-     * Ensures that the given Path matches one of the exact traversals we'd expect for a person whom Marko
-     * knows that has created software and what software that is.
-     * <p/>
-     * These paths should be:
-     * <ul>
-     * <li>marko -> knows -> josh -> created -> lop</li>
-     * <li>marko -> knows -> josh -> created -> ripple</li>
-     * </ul>
-     */
-    private void validatePathObjects(Path path) {
-
-        // marko should be the origin point.
-        assertThat(path)
-                .object(0)
-                .asVertex()
-                .hasLabel("person")
-                .hasProperty("name", "marko")
-                .hasProperty("age", 29);
-
-        // there should be a 'knows' outgoing relationship between marko and josh.
-        assertThat(path)
-                .object(1)
-                .asEdge()
-                .hasLabel("knows")
-                .hasProperty("weight", 1.0f)
-                .hasOutVLabel("person")
-                .hasOutV(path.getObjects().get(0))
-                .hasInVLabel("person")
-                .hasInV(path.getObjects().get(2));
-
-        // josh...
-        assertThat(path)
-                .object(2)
-                .asVertex()
-                .hasLabel("person")
-                .hasProperty("name", "josh")
-                .hasProperty("age", 32);
-
-        if (path.getObjects().get(4).asVertex().getProperty("name").getValue().asString().equals("lop")) {
-
-            // there should be a 'created' relationship between josh and lop.
-            assertThat(path)
-                    .object(3)
-                    .asEdge()
-                    .hasLabel("created")
-                    .hasProperty("weight", 0.4f)
-                    .hasOutVLabel("person")
-                    .hasOutV(path.getObjects().get(2))
-                    .hasInVLabel("software")
-                    .hasInV(path.getObjects().get(4));
-
-            // lop..
-            assertThat(path)
-                    .object(4)
-                    .asVertex()
-                    .hasLabel("software")
-                    .hasProperty("name", "lop")
-                    .hasProperty("lang", "java");
-
-        } else {
-
-            // there should be a 'created' relationship between josh and ripple.
-            assertThat(path)
-                    .object(3)
-                    .asEdge()
-                    .hasLabel("created")
-                    .hasProperty("weight", 1.0f)
-                    .hasOutVLabel("person")
-                    .hasOutV(path.getObjects().get(2))
-                    .hasInVLabel("software")
-                    .hasInV(path.getObjects().get(4));
-
-            // ripple..
-            assertThat(path)
-                    .object(4)
-                    .asVertex()
-                    .hasLabel("software")
-                    .hasProperty("name", "ripple")
-                    .hasProperty("lang", "java");
         }
     }
 
@@ -488,10 +420,11 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
                         .by("name"))
         );
 
-        assertThat(rs.getAvailableWithoutFetching()).isEqualTo(1);
+        List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(1);
 
         // [{key=marko, value=[{key=josh, value=[{key=ripple, value=[]}, {key=lop, value=[]}]}]}]
-        GraphNode result = rs.one();
+        GraphNode result = results.get(0);
 
         // Since there is no 'Tree' type in DSE yet, we consume the tree as a GraphNode.
         // There should be 1 tree, with marko being the root.
@@ -532,9 +465,10 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
                 statementFromTraversal(g.E().hasLabel("knows").subgraph("subGraph").cap("subGraph"))
         );
 
-        assertThat(rs.getAvailableWithoutFetching()).isEqualTo(1);
+        List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(1);
 
-        GraphNode result = rs.one();
+        GraphNode result = results.get(0);
         assertThat(result)
                 .hasChild("edges")
                 .hasChild("vertices");
@@ -579,5 +513,26 @@ public class TraversalIntegrationTest extends CCMTinkerPopTestsSupport {
                 .hasLabel("person");
     }
 
+    /**
+     * Ensures that traversals with barriers (which return results bulked) contain the
+     * correct amount of end results.
+     * <p/>
+     * This will fail if ran against DSE < 5.0.9 or DSE < 5.1.2.
+     */
+    @Test(groups = "short")
+    @DseVersion("5.0.9")
+    public void should_return_correct_results_when_bulked() {
+        DseVersionCheckUtils.checkDse51Version(ccm().getDSEVersion(), VersionNumber.parse("5.1.2"));
 
+        GraphResultSet rs = session().executeGraph(
+                statementFromTraversal(g.E().label().barrier())
+        );
+
+        List<String> results = rs.all().stream().map(GraphNode::asString).sorted().collect(Collectors.toList());
+
+        List<String> expected = Arrays.asList("knows", "created", "created", "knows", "created", "created");
+        Collections.sort(expected);
+
+        assertThat(results).isEqualTo(expected);
+    }
 }

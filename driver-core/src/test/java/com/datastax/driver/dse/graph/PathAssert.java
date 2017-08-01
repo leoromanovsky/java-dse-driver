@@ -51,4 +51,63 @@ public class PathAssert extends AbstractAssert<PathAssert, Path> {
     public AbstractListAssert<?, ? extends List<GraphNode>, GraphNode> objects(String label) {
         return assertThat(actual.getObjects(label));
     }
+
+    /**
+     * Ensures that the given Path matches one of the exact traversals we'd expect for a person whom Marko
+     * knows that has created software and what software that is.
+     * <p>
+     * These paths should be:
+     * <ul>
+     * <li>marko -> knows -> josh -> created -> lop</li>
+     * <li>marko -> knows -> josh -> created -> ripple</li>
+     * </ul>
+     * <p>
+     * GraphSON2 elements in paths don't contain properties so this method doesn't check
+     * elements' properties.
+     */
+    public static void validatePathObjects(Path path) {
+
+        // marko should be the origin point.
+        GraphAssertions.assertThat(path)
+                .object(0)
+                .asVertex()
+                .hasLabel("person")
+        ;
+
+        // there should be a 'knows' outgoing relationship between marko and josh.
+        GraphAssertions.assertThat(path)
+                .object(1)
+                .asEdge()
+                .hasLabel("knows")
+                .hasOutVLabel("person")
+                .hasOutV(path.getObjects().get(0))
+                .hasInVLabel("person")
+                .hasInV(path.getObjects().get(2))
+        ;
+
+        // josh...
+        GraphAssertions.assertThat(path)
+                .object(2)
+                .asVertex()
+                .hasLabel("person")
+        ;
+
+        // there should be a 'created' relationship between josh and lop.
+        GraphAssertions.assertThat(path)
+                .object(3)
+                .asEdge()
+                .hasLabel("created")
+                .hasOutVLabel("person")
+                .hasOutV(path.getObjects().get(2))
+                .hasInVLabel("software")
+                .hasInV(path.getObjects().get(4))
+        ;
+
+        // lop..
+        GraphAssertions.assertThat(path)
+                .object(4)
+                .asVertex()
+                .hasLabel("software")
+        ;
+    }
 }

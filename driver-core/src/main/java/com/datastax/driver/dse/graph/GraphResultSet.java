@@ -12,7 +12,7 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.exceptions.DriverException;
 import com.datastax.driver.dse.DseSession;
 import com.google.common.base.Function;
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -32,7 +32,7 @@ public class GraphResultSet implements Iterable<GraphNode> {
             if (row != null) {
                 String jsonString = row.getString("gremlin");
                 try {
-                    return GraphJsonUtils.readStringAsTree(jsonString).get("result");
+                    return GraphJsonUtils.readStringAsTree(jsonString);
                 } catch (RuntimeException e) {
                     throw new DriverException("Could not parse the result returned by the Graph server as a JSON string : " + jsonString, e);
                 }
@@ -41,6 +41,9 @@ public class GraphResultSet implements Iterable<GraphNode> {
             }
         }
     };
+
+    private long bulk = 0;
+    private GraphNode lastGraphNode = null;
 
     private final ResultSet wrapped;
     private final Function<Row, GraphNode> transformResultFunction;
@@ -64,7 +67,7 @@ public class GraphResultSet implements Iterable<GraphNode> {
      * @return whether there are more results.
      */
     public boolean isExhausted() {
-        return wrapped.isExhausted();
+        return wrapped.isExhausted() && bulk <= 1;
     }
 
     /**
@@ -73,28 +76,40 @@ public class GraphResultSet implements Iterable<GraphNode> {
      * @return the next result, or {@code null} if there are no more of them.
      */
     public GraphNode one() {
-        return this.transformResultFunction.apply(wrapped.one());
+        if (bulk > 1) {
+            bulk--;
+            // TODO: return a copy? Not sure it's useful because the content of this is supposed to be immutable.
+            return lastGraphNode;
+        }
+        GraphNode container = this.transformResultFunction.apply(wrapped.one());
+
+        if (container == null) {
+            return null;
+        }
+
+        if (container.get(GraphSONTokens.BULK) != null) {
+            bulk = container.get(GraphSONTokens.BULK).asLong();
+        }
+
+        GraphNode results = container.get("result");
+        lastGraphNode = results;
+        return results;
     }
 
     /**
      * Returns all the remaining results as a list.
-     * <p/>
-     * Note that, contrary to {@code iterator()} or successive calls to {@code one()}, this method force-fetches all
-     * remaining results from the server, holding them all in memory. It is thus recommended to prefer iterations
-     * through {@code iterator()} when possible, especially when there is a large number of results.
      *
-     * @return a list containing the remaining results. The returned list is empty if and only this result set is
-     * {@link #isExhausted() exhausted}. The result set will be exhausted after a call to this method.
+     * @return a list containing the remaining results. The result set will be exhausted after a call to this method.
      */
     public List<GraphNode> all() {
-        return Lists.transform(wrapped.all(), this.transformResultFunction);
+        return ImmutableList.copyOf(iterator());
     }
 
     /**
      * Returns an iterator over the results.
      * <p/>
      * The {@link Iterator#next} method is equivalent to calling {@link #one}. After a full iteration, the result set
-     * will be {@link #isExhausted() exhausted}.
+     * will be exhausted.
      * <p/>
      * The returned iterator does not support the {@link Iterator#remove} method.
      *
@@ -104,7 +119,7 @@ public class GraphResultSet implements Iterable<GraphNode> {
         return new Iterator<GraphNode>() {
             @Override
             public boolean hasNext() {
-                return !wrapped.isExhausted();
+                return !isExhausted();
             }
 
             @Override
@@ -120,16 +135,23 @@ public class GraphResultSet implements Iterable<GraphNode> {
     }
 
     /**
+     * This method has been deprecated because it may return incorrect numbers. Since paging
+     * is not implemented in DSE Graph, using {@link #all()} is recommended instead to gather all
+     * the results coming back from a DSE Graph query.
+     * <p/>
      * The number of results that can be retrieved without blocking to fetch.
      *
      * @return the number of results readily available. If {@link #isFullyFetched()}, this is the total number of
      * results remaining, otherwise going past that limit will trigger background fetches.
      */
+    @Deprecated
     public int getAvailableWithoutFetching() {
         return wrapped.getAvailableWithoutFetching();
     }
 
     /**
+     * This method has been deprecated because paging is not implemented for DSE Graph.
+     * <p/>
      * Whether all results have been fetched from the database.
      * <p/>
      * If {@code isFullyFetched()}, then {@link #getAvailableWithoutFetching} will return the number of results
@@ -140,11 +162,14 @@ public class GraphResultSet implements Iterable<GraphNode> {
      *
      * @return whether all results have been fetched.
      */
+    @Deprecated
     public boolean isFullyFetched() {
         return wrapped.isFullyFetched();
     }
 
     /**
+     * This method has been deprecated because paging is not implemented for DSE Graph.
+     * <p/>
      * Force fetching the next page of results for this result set, if any.
      * <p/>
      * This method is entirely optional. It will be called automatically while
@@ -184,6 +209,7 @@ public class GraphResultSet implements Iterable<GraphNode> {
      * thrown (you should thus call {@code isFullyFetched() to know if calling this
      * method can be of any use}).
      */
+    @Deprecated
     public ListenableFuture<GraphResultSet> fetchMoreResults() {
         return Futures.transform(wrapped.fetchMoreResults(), new Function<ResultSet, GraphResultSet>() {
             @Override

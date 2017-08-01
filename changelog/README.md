@@ -2,6 +2,7 @@
 
 ### 1.4.0 (in progress)
 
+- [improvement] JAVA-1467: Handle bulked results in Graph.
 - [bug] JAVA-1540: DefaultVertex `toString()` prints `DefaultElement`.
 - [improvement] JAVA-1476: Improve GraphSON2 ser/de performance.
 - [bug] JAVA-1512: Mapper.checkNotInEventLoop does not work with DseSession.

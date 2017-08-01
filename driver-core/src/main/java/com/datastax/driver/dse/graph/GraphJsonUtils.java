@@ -43,7 +43,7 @@ public class GraphJsonUtils {
                     return null;
                 } else if (input.getColumnDefinitions().contains("gremlin")) {
                     // some results do not contain the "row" gremlin.
-                    return readStringAsTreeGraphson20(input.getString("gremlin")).get("result");
+                    return readStringAsTreeGraphson20(input.getString("gremlin"));
                 } else {
                     return null;
                 }

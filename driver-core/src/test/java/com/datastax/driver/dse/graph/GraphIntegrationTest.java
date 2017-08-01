@@ -27,6 +27,7 @@ import java.util.Map;
 import static com.datastax.driver.dse.graph.GraphAssertions.assertThat;
 import static com.datastax.driver.dse.graph.GraphExtractors.fieldAs;
 import static com.datastax.driver.dse.graph.GraphExtractors.vertexPropertyValueAs;
+import static com.datastax.driver.dse.graph.PathAssert.validatePathObjects;
 
 @SuppressWarnings("Since15")
 @DseVersion("5.0.0")
@@ -67,13 +68,15 @@ public abstract class GraphIntegrationTest extends CCMGraphTestsSupport {
         GraphResultSet resultSet = session().executeGraph(
                 new SimpleGraphStatement("g.V().hasLabel('person').has('name', name)").set("name", "marko"));
 
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex marko = resultSet.one().asVertex();
+        List<GraphNode> results = resultSet.all();
+        assertThat(results.size()).isEqualTo(1);
+        Vertex marko = results.get(0).asVertex();
         assertThat(marko).hasProperty("name", "marko");
 
         resultSet = session().executeGraph(new SimpleGraphStatement("g.V(myV)").set("myV", marko.getId()));
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex marko2 = resultSet.one().asVertex();
+        results = resultSet.all();
+        assertThat(results.size()).isEqualTo(1);
+        Vertex marko2 = results.get(0).asVertex();
 
         // Ensure that the returned vertex is the same as the first.
         assertThat(marko2).isEqualTo(marko);
@@ -91,8 +94,9 @@ public abstract class GraphIntegrationTest extends CCMGraphTestsSupport {
         GraphResultSet resultSet = session().executeGraph(
                 new SimpleGraphStatement("g.V().hasLabel('person').has('name', name)").set("name", "marko"));
 
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex marko = resultSet.one().asVertex();
+        List<GraphNode> results = resultSet.all();
+        assertThat(results.size()).isEqualTo(1);
+        Vertex marko = results.get(0).asVertex();
         assertThat(marko).hasProperty("name", "marko");
 
         //@formatter:off
@@ -126,13 +130,15 @@ public abstract class GraphIntegrationTest extends CCMGraphTestsSupport {
         GraphResultSet resultSet = session().executeGraph(
                 new SimpleGraphStatement("g.E().has('weight', weight)").set("weight", 0.2f));
 
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Edge created = resultSet.one().asEdge();
+        List<GraphNode> results = resultSet.all();
+        assertThat(results.size()).isEqualTo(1);
+        Edge created = results.get(0).asEdge();
         assertThat(created).hasProperty("weight", 0.2f).hasInVLabel("software").hasOutVLabel("person");
 
         resultSet = session().executeGraph(new SimpleGraphStatement("g.E(myE).inV()").set("myE", created.getId()));
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex lop = resultSet.one().asVertex();
+        results = resultSet.all();
+        assertThat(results.size()).isEqualTo(1);
+        Vertex lop = results.get(0).asVertex();
 
         assertThat(lop).hasLabel("software").hasProperty("name", "lop").hasProperty("lang", "java");
     }
@@ -253,8 +259,8 @@ public abstract class GraphIntegrationTest extends CCMGraphTestsSupport {
                 "by('lang')." +
                 "by(__.in('created').fold())");
 
-        assertThat(rs.getAvailableWithoutFetching()).isEqualTo(2);
         List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(2);
 
         // Ensure that we got 'lop' and 'ripple' for property a.
         assertThat(results).extracting(fieldAs("a", String.class)).containsOnly("lop", "ripple");
@@ -299,9 +305,10 @@ public abstract class GraphIntegrationTest extends CCMGraphTestsSupport {
     public void should_handle_subgraph() {
         GraphResultSet rs = session().executeGraph("g.E().hasLabel('knows').subgraph('subGraph').cap('subGraph')");
 
-        assertThat(rs.getAvailableWithoutFetching()).isEqualTo(1);
+        List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(1);
 
-        GraphNode result = rs.one();
+        GraphNode result = results.get(0);
         assertThat(result)
                 .hasChild("edges")
                 .hasChild("vertices");
@@ -333,7 +340,7 @@ public abstract class GraphIntegrationTest extends CCMGraphTestsSupport {
     @Test(groups = "short")
     public void should_return_zero_results() {
         GraphResultSet rs = session().executeGraph("g.V().hasLabel('notALabel')");
-        assertThat(rs.getAvailableWithoutFetching()).isZero();
+        assertThat(rs.all().size()).isZero();
     }
 
     /**
@@ -533,5 +540,79 @@ public abstract class GraphIntegrationTest extends CCMGraphTestsSupport {
         assertThat(nil.isArray()).isFalse();
         assertThat(nil.isValue()).isTrue(); // null node is a value node
         assertThat(nil.isNull()).isTrue();
+    }
+
+    /**
+     * Validates that when traversing a path and labeling some of the elements during the traversal that the
+     * output elements are properly labeled.
+     *
+     * @test_category dse:graph
+     */
+    @Test(groups = "short")
+    public void should_resolve_path_with_some_labels() {
+        GraphResultSet rs = session().executeGraph("g.V().hasLabel('person').has('name', 'marko').as('a')" +
+                ".outE('knows').inV().as('c', 'd').outE('created').as('e', 'f', 'g').inV().path()");
+
+        List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(2);
+        for (GraphNode result : results) {
+            Path path = result.asPath();
+            validatePathObjects(path);
+            assertThat(path.getLabels()).hasSize(5);
+            assertThat(path)
+                    .hasLabel(0, "a")
+                    .hasNoLabel(1)
+                    .hasLabel(2, "c", "d")
+                    .hasLabel(3, "e", "f", "g")
+                    .hasNoLabel(4);
+        }
+    }
+
+    /**
+     * Validates that when traversing a path and labeling all of the elements during the traversal that the
+     * output elements are properly labeled.
+     *
+     * @test_category dse:graph
+     */
+    @Test(groups = "short")
+    public void should_resolve_path_with_labels() {
+        GraphResultSet rs = session().executeGraph("g.V().hasLabel('person').has('name', 'marko').as('a')" +
+                ".outE('knows').as('b').inV().as('c', 'd').outE('created').as('e', 'f', 'g').inV().as('h').path()");
+
+        List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(2);
+        for (GraphNode result : results) {
+            Path path = result.asPath();
+            validatePathObjects(path);
+            assertThat(path.getLabels()).hasSize(5);
+            assertThat(path)
+                    .hasLabel(0, "a")
+                    .hasLabel(1, "b")
+                    .hasLabel(2, "c", "d")
+                    .hasLabel(3, "e", "f", "g")
+                    .hasLabel(4, "h");
+        }
+    }
+
+    /**
+     * Validates that when traversing a path and labeling none of the elements during the traversal that all the
+     * labels are empty in the result.
+     *
+     * @test_category dse:graph
+     */
+    @Test(groups = "short")
+    public void should_resolve_path_without_labels() {
+        GraphResultSet rs = session().executeGraph("g.V().hasLabel('person').has('name', 'marko')" +
+                ".outE('knows').inV().outE('created').inV().path()");
+        List<GraphNode> results = rs.all();
+        assertThat(results.size()).isEqualTo(2);
+        for (GraphNode result : results) {
+            Path path = result.asPath();
+            validatePathObjects(path);
+            assertThat(path.getLabels()).hasSize(5);
+            for (int i = 0; i < 5; i++)
+                assertThat(path)
+                        .hasNoLabel(i);
+        }
     }
 }

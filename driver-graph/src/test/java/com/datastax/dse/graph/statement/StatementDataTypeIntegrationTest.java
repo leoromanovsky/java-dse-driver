@@ -7,11 +7,14 @@
 package com.datastax.dse.graph.statement;
 
 import com.datastax.driver.core.utils.DseVersion;
+import com.datastax.driver.dse.graph.GraphNode;
 import com.datastax.driver.dse.graph.GraphResultSet;
 import com.datastax.driver.dse.graph.Vertex;
 import com.datastax.driver.dse.graph.VertexAssert;
 import com.datastax.dse.graph.DataTypeIntegrationTest;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+
+import java.util.List;
 
 import static com.datastax.driver.dse.graph.GraphAssertions.assertThat;
 import static com.datastax.dse.graph.api.DseGraph.statementFromTraversal;
@@ -53,8 +56,9 @@ public class StatementDataTypeIntegrationTest extends DataTypeIntegrationTest {
     @SuppressWarnings("unchecked")
     private void validateVertexResult(GraphResultSet resultSet, String vertexLabel, String propertyName, Object expectedResult) {
         // Ensure the created vertex is returned and the property value matches what was provided.
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex v = resultSet.one().asVertex();
+        List<GraphNode> graphNodes = resultSet.all();
+        assertThat(graphNodes.size()).isEqualTo(1);
+        Vertex v = graphNodes.get(0).asVertex();
         VertexAssert a = assertThat(v).hasLabel(vertexLabel);
 
         // Validate using the appropriate asXXX method depending on the type of the class.

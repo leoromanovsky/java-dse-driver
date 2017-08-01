@@ -25,7 +25,6 @@ import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerIoRegistryV2d0;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Map;
 
 @SuppressWarnings("ConstantConditions")
 public class GraphSONUtils {
@@ -57,9 +56,7 @@ public class GraphSONUtils {
         Object deserializedObject = null;
         if (input.getColumnDefinitions().contains("gremlin")) {
             try {
-                @SuppressWarnings("rawtypes")
-                Map map = (Map) readStringAs(input.getString("gremlin"), Object.class);
-                deserializedObject = map.get("result");
+                deserializedObject = readStringAs(input.getString("gremlin"), Object.class);
             } catch (IOException e) {
                 throw Throwables.propagate(e);
             }

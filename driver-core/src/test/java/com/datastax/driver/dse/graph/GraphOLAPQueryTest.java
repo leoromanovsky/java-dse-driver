@@ -13,6 +13,7 @@ import com.google.common.collect.Lists;
 import org.testng.annotations.Test;
 
 import java.util.Collection;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,8 +28,11 @@ public class GraphOLAPQueryTest extends CCMGraphTestsOLAPSupport {
         Collection<Host> triedHosts = Lists.newArrayListWithCapacity(times);
         for (int i = 0; i < times; i++) {
             GraphResultSet result = session().executeGraph(statement);
-            assertThat(result.getAvailableWithoutFetching()).isEqualTo(1);
-            GraphNode r = result.one();
+
+            List<GraphNode> results = result.all();
+            assertThat(results.size()).isEqualTo(1);
+            GraphNode r = results.get(0);
+
             assertThat(r.asInt()).isEqualTo(6);
 
             ExecutionInfo executionInfo = result.getExecutionInfo();

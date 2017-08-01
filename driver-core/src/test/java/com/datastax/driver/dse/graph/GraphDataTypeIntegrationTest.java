@@ -15,6 +15,7 @@ import com.datastax.driver.dse.geometry.LineString;
 import com.datastax.driver.dse.geometry.Polygon;
 import com.google.common.base.Charsets;
 import com.google.common.net.InetAddresses;
+import org.assertj.core.api.Assertions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.SkipException;
@@ -24,6 +25,7 @@ import org.testng.annotations.Test;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -178,8 +180,9 @@ public abstract class GraphDataTypeIntegrationTest extends CCMGraphTestsSupport 
     private void validateVertexResult(GraphResultSet resultSet, String vertexLabel, String propertyName, Object
             expectedResult) {
         // Ensure the created vertex is returned and the property value matches what was provided.
-        assertThat(resultSet.getAvailableWithoutFetching()).isEqualTo(1);
-        Vertex v = resultSet.one().asVertex();
+        List<GraphNode> results = resultSet.all();
+        Assertions.assertThat(results.size()).isEqualTo(1);
+        Vertex v = results.get(0).asVertex();
         VertexAssert a = assertThat(v).hasLabel(vertexLabel);
 
         // Validate using the appropriate asXXX method depending on the type of the class.
