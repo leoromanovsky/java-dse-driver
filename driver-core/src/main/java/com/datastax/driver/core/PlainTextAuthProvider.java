@@ -79,7 +79,7 @@ public class PlainTextAuthProvider implements AuthProvider {
      * perform authentication against Cassandra servers configured
      * with PasswordAuthenticator.
      */
-    private static class PlainTextAuthenticator extends ProtocolV1Authenticator implements Authenticator {
+    static class PlainTextAuthenticator extends ProtocolV1Authenticator implements Authenticator {
 
         private final byte[] username;
         private final byte[] password;

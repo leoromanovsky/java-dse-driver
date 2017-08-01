@@ -378,6 +378,10 @@ class Connection {
                         if (message.startsWith("java.lang.ArrayIndexOutOfBoundsException: 15"))
                             message = String.format("Cannot use authenticator %s with protocol version 1, "
                                     + "only plain text authentication is supported with this protocol version", authenticator);
+                        if (authenticator instanceof AuthProvider.TransitionalModePlainTextAuthenticator) {
+                            // this means that we assumed transitional mode on, but it was actually off
+                            message = String.format(AuthProvider.NoAuthProvider.NO_AUTHENTICATOR_MESSAGE, address);
+                        }
                         incrementAuthErrorMetric();
                         throw new AuthenticationException(address, message);
                     default:

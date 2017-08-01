@@ -2,6 +2,7 @@
 
 ### 1.4.0 (in progress)
 
+- [bug] JAVA-1578: Cannot connect without credentials to a DSE cluster with transitional mode set to normal.
 - [improvement] JAVA-1467: Handle bulked results in Graph.
 - [bug] JAVA-1540: DefaultVertex `toString()` prints `DefaultElement`.
 - [improvement] JAVA-1476: Improve GraphSON2 ser/de performance.
