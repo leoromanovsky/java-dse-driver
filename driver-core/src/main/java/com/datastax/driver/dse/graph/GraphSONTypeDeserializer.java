@@ -21,7 +21,7 @@ import com.fasterxml.jackson.databind.util.TokenBuffer;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 /**
  * Contains main logic for the whole JSON to Java deserialization. Handles types embedded with the version 2.0 of GraphSON.
@@ -33,7 +33,7 @@ class GraphSONTypeDeserializer extends TypeDeserializerBase {
     private final JavaType baseType;
     private final TypeInfo typeInfo;
 
-    private static final JavaType mapJavaType = TypeFactory.defaultInstance().constructType(HashMap.class);
+    private static final JavaType mapJavaType = TypeFactory.defaultInstance().constructType(LinkedHashMap.class);
     private static final JavaType arrayJavaType = TypeFactory.defaultInstance().constructType(ArrayList.class);
 
 
