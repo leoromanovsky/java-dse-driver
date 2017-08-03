@@ -1,5 +1,13 @@
 ## Upgrade guide
 
+### 1.4.0
+
+[GraphResultSet#getAvailableWithoutFetching()](http://docs.datastax.com/en/drivers/java-dse/1.4/com/datastax/driver/dse/graph/GraphResultSet.html#getAvailableWithoutFetching--)
+is now considered deprecated as it may return incorrect values in cases where the server returns bulking
+information (such as in the [barrier()](http://tinkerpop.apache.org/docs/current/reference/#barrier-step) step).
+For a reliable count, use [GraphResultSet#all()](http://docs.datastax.com/en/drivers/java-dse/1.4/com/datastax/driver/dse/graph/GraphResultSet.html#all--).
+
+
 ### 1.3.0
 
 The driver will now offer the possibility to use the GraphSON2 sub protocol for the 
