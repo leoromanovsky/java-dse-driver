@@ -2,6 +2,7 @@
 
 ### 1.4.0 (in progress)
 
+- [documentation] JAVA-1543: Update Contributing guide for DSE driver.
 - [bug] JAVA-1578: Cannot connect without credentials to a DSE cluster with transitional mode set to normal.
 - [improvement] JAVA-1467: Handle bulked results in Graph.
 - [bug] JAVA-1540: DefaultVertex `toString()` prints `DefaultElement`.
@@ -13,6 +14,7 @@
 Merged from OSS 3.x:
 
 - [documentation] JAVA-1550: FAQ Entry for BusyPoolException.
+
 
 ### 1.3.0
 

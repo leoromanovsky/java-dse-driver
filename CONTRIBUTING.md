@@ -5,8 +5,7 @@
 Before starting to work on something, please comment in JIRA or ask on the mailing list
 to make sure nobody else is working on it.
 
-If your fix applies to multiple branches, base your work on the lowest active branch. The DSE driver uses
-[semantic versioning](http://semver.org/) and our branches use the following scheme:
+The DSE driver uses [semantic versioning](http://semver.org/) and our branches use the following scheme:
 
 ```
             1.1.1      1.1.2 ...                1.2.1 ...
@@ -24,16 +23,12 @@ Legend:
 
 - new features are developed on "minor" branches such as `1.x`, where minor releases (ending in `.0`) happen.
 - bugfixes go to "patch" branches such as `1.1.x` and `1.2.x`, where patch releases (ending in `.1`, `.2`...) happen.
-- patch branches are regularly merged to the right (`1.1.x` to `1.2.x`) and to the bottom (`1.2.x` to `1.x`) so that
-  bugfixes are applied to newer versions too.
+- patch branches are regularly merged to the bottom (`1.2.x` to `1.x`) so that bugfixes are 
+  applied to newer versions too.
 
-The current active versions are 1.1 and 1.2. Therefore:
-
-- if you're fixing a bug on a feature that existed since 1.1, target `1.1.x`. Your changes will be available in future
-  1.1 and 1.2 patch versions.
-- if you're fixing a bug on a 1.2-only feature, target `1.2.x`. Your changes will be available in a future 1.2 patch
-  version.
-- if you're adding a new feature, target `1.x`. Your changes will be available in the upcoming 1.3.0.
+Consequently, the branch having the highest major + minor version (in the format `x.x.x`) 
+will be the branch to target bugfixes to. The branch in the format `x.x` which has the 
+highest major will be the branch to target new features to.
 
 Before you send your pull request, make sure that:
 
@@ -54,14 +49,14 @@ in-depth knowledge of the codebase.
 We use IntelliJ IDEA with the default formatting options, with one exception: check
 "Enable formatter markers in comments" in Preferences > Editor > Code Style.
 
-Please format your code and organize imports before submitting your changes.
+Please format your code and optimize imports before submitting your changes.
 
 ## Running the tests
 
 We use TestNG. There are 3 test categories:
 
 - "unit": pure Java unit tests.
-- "short" and "long": integration tests that launch Cassandra instances.
+- "short" and "long": integration tests that launch DSE instances.
 
 The Maven build uses profiles named after the categories to choose which tests to run:
 
@@ -71,16 +66,26 @@ mvn test -Pshort
 
 The default is "unit". Each profile runs the ones before it ("short" runs unit, etc.)
 
-Integration tests use [CCM](https://github.com/pcmanus/ccm) to bootstrap Cassandra instances.
+Integration tests use [CCM](https://github.com/pcmanus/ccm) to bootstrap DSE instances.
+
+DSE executable jars can be either fetched by CCM, for which credentials can be specified in
+the `~/.ccm/.dse.ini` file, or DSE instances can be launched by CCM from a local DSE
+build.
+
 Two Maven properties control its execution:
 
-- `cassandra.version`: the Cassandra version. This has a default value in the root POM,
+- `cassandra.version`: the **DSE** version. This has a default value in the root POM,
   you can override it on the command line (`-Dcassandra.version=...`).
 - `ipprefix`: the prefix of the IP addresses that the Cassandra instances will bind to (see
   below). This defaults to `127.0.1.`.
+- `cassandra.directory`: The directory containing DSE's source project, in which CCM
+  will find the DSE executable jars to launch a DSE instance, if the source code has been compiled.
+  This option is only useful if you wish to launch the Java driver tests against a local
+  build of DSE.
+  
 
 
-CCM launches multiple Cassandra instances on localhost by binding to different addresses. The
+CCM launches multiple DSE instances on localhost by binding to different addresses. The
 driver uses up to 10 different instances (127.0.1.1 to 127.0.1.10 with the default prefix).
 You'll need to define loopback aliases for this to work, on Mac OS X your can do it with:
 
