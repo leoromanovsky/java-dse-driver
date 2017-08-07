@@ -10,7 +10,7 @@ This component is published in Maven central as a separate artifact:
 <dependency>
   <groupId>com.datastax.dse</groupId>
   <artifactId>dse-java-driver-graph</artifactId>
-  <version>1.3.0</version>
+  <version>1.4.0</version>
 </dependency>
 ```
 

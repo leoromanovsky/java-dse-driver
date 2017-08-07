@@ -12,7 +12,7 @@ package name:
 <dependency>
   <groupId>com.datastax.dse</groupId>
   <artifactId>dse-java-driver-core</artifactId>
-  <version>1.3.0</version>
+  <version>1.4.0</version>
   <classifier>shaded</classifier>
   <!-- Because the shaded JAR uses the original POM, you still need
        to exclude this dependency explicitly: -->

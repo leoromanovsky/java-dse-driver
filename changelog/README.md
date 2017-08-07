@@ -1,6 +1,6 @@
 ## Changelog
 
-### 1.4.0 (in progress)
+### 1.4.0
 
 - [documentation] JAVA-1543: Update Contributing guide for DSE driver.
 - [bug] JAVA-1578: Cannot connect without credentials to a DSE cluster with transitional mode set to normal.

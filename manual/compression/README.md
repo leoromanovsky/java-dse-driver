@@ -85,4 +85,4 @@ cluster = DseCluster.builder()
     .build();
 ```
 
-[pom]: https://repo1.maven.org/maven2/com/datastax/dse/dse-java-driver-parent/1.3.0/dse-java-driver-parent-1.3.0.pom
+[pom]: https://repo1.maven.org/maven2/com/datastax/dse/dse-java-driver-parent/1.4.0/dse-java-driver-parent-1.4.0.pom
