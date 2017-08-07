@@ -1,5 +1,10 @@
 ## Changelog
 
+### 1.5.0 (in progress)
+
+- [documentation] JAVA-1479: Update README.
+
+
 ### 1.4.0
 
 - [documentation] JAVA-1543: Update Contributing guide for DSE driver.

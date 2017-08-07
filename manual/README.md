@@ -39,6 +39,23 @@ Note: this example uses the synchronous API. Most methods have [asynchronous](as
 equivalents. You can use `DseSession` as a drop-in replacement for `Session`. In fact the DSE driver also includes these
 classes, but you'll typically use a `DseCluster` to interact with DSE.*
 
+### Troubleshooting connection issues
+
+If the example above fails to connect (throwing `NoHostAvailableException`), check that the contact points are accessible
+from the client machine, for example:
+
+```
+telnet 1.2.3.4 9042
+```
+
+Here are some common mistakes:
+
+* using the wrong address. See [Address resolution](address_resolution/) for an explanation of the various addresses that
+  can be configured server-side, and which one should be used by the client.
+* using the wrong port. The value passed to `Cluster.builder().withPort()` (default 9042 )should match `native_transport_port`
+  in `cassandra.yaml`.
+* on older server versions, the native transport must be enabled explicitly. See `start_native_transport` in `cassandra.yaml`.
+
 
 ### Setting up the driver
 
