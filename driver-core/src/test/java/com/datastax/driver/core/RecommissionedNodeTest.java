@@ -55,7 +55,6 @@ public class RecommissionedNodeTest {
         // Start another ccm that will reuse node1's address
         otherCcmBuilder = CCMBridge.builder()
                 .withStoragePort(mainCcm.getStoragePort())
-                .withThriftPort(mainCcm.getThriftPort())
                 .withBinaryPort(mainCcm.getBinaryPort())
                 .withNodes(1);
         otherCcm = CCMCache.get(otherCcmBuilder);
@@ -85,7 +84,6 @@ public class RecommissionedNodeTest {
         // Start another ccm that will reuse node1's address
         otherCcmBuilder = CCMBridge.builder()
                 .withStoragePort(mainCcm.getStoragePort())
-                .withThriftPort(mainCcm.getThriftPort())
                 .withBinaryPort(mainCcm.getBinaryPort())
                 .withNodes(1);
         otherCcm = CCMCache.get(otherCcmBuilder);
@@ -109,7 +107,6 @@ public class RecommissionedNodeTest {
 
         otherCcmBuilder = CCMBridge.builder()
                 .withStoragePort(mainCcm.getStoragePort())
-                .withThriftPort(mainCcm.getThriftPort())
                 .withBinaryPort(mainCcm.getBinaryPort())
                 .withNodes(1);
         otherCcm = CCMCache.get(otherCcmBuilder);
@@ -146,7 +143,6 @@ public class RecommissionedNodeTest {
 
         otherCcmBuilder = CCMBridge.builder().withNodes(1)
                 .withStoragePort(mainCcm.getStoragePort())
-                .withThriftPort(mainCcm.getThriftPort())
                 .withBinaryPort(mainCcm.getBinaryPort())
                 .withVersion(VersionNumber.parse("1.2.19"));
         otherCcm = CCMCache.get(otherCcmBuilder);

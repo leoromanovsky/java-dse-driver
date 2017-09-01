@@ -75,11 +75,6 @@ public class CCMCache {
         }
 
         @Override
-        public int getThriftPort() {
-            return ccm.getThriftPort();
-        }
-
-        @Override
         public int getBinaryPort() {
             return ccm.getBinaryPort();
         }

@@ -263,8 +263,6 @@ public class CCMBridge implements CCMAccess {
 
     private final int storagePort;
 
-    private final int thriftPort;
-
     private final int binaryPort;
 
     private final File ccmDir;
@@ -282,12 +280,11 @@ public class CCMBridge implements CCMAccess {
     private final int[] nodes;
 
     private CCMBridge(String clusterName, VersionNumber cassandraVersion, VersionNumber dseVersion,
-                      int storagePort, int thriftPort, int binaryPort, String jvmArgs, int[] nodes) {
+                      int storagePort, int binaryPort, String jvmArgs, int[] nodes) {
         this.clusterName = clusterName;
         this.cassandraVersion = cassandraVersion;
         this.dseVersion = dseVersion;
         this.storagePort = storagePort;
-        this.thriftPort = thriftPort;
         this.binaryPort = binaryPort;
         this.isDSE = dseVersion != null;
         this.jvmArgs = jvmArgs;
@@ -342,11 +339,6 @@ public class CCMBridge implements CCMAccess {
     @Override
     public int getStoragePort() {
         return storagePort;
-    }
-
-    @Override
-    public int getThriftPort() {
-        return thriftPort;
     }
 
     @Override
@@ -544,12 +536,11 @@ public class CCMBridge implements CCMAccess {
     @Override
     public void add(int dc, int n) {
         logger.debug(String.format("Adding: node %s (%s%s:%s) to %s", n, TestUtils.IP_PREFIX, n, binaryPort, this));
-        String thriftItf = TestUtils.ipOfNode(n) + ":" + thriftPort;
         String storageItf = TestUtils.ipOfNode(n) + ":" + storagePort;
         String binaryItf = TestUtils.ipOfNode(n) + ":" + binaryPort;
         String remoteLogItf = TestUtils.ipOfNode(n) + ":" + TestUtils.findAvailablePort();
-        execute(CCM_COMMAND + " add node%d -d dc%s -i %s%d -t %s -l %s --binary-itf %s -j %d -r %s -s -b" + (isDSE ? " --dse" : ""),
-                n, dc, TestUtils.IP_PREFIX, n, thriftItf, storageItf, binaryItf, TestUtils.findAvailablePort(), remoteLogItf);
+        execute(CCM_COMMAND + " add node%d -d dc%s -i %s%d -t -l %s --binary-itf %s -j %d -r %s -s -b" + (isDSE ? " --dse" : ""),
+                n, dc, TestUtils.IP_PREFIX, n, storageItf, binaryItf, TestUtils.findAvailablePort(), remoteLogItf);
     }
 
     @Override
@@ -844,9 +835,7 @@ public class CCMBridge implements CCMAccess {
         private final Map<Integer, String[]> workloads = new HashMap<Integer, String[]>();
 
         private Builder() {
-            cassandraConfiguration.put("start_rpc", false);
             cassandraConfiguration.put("storage_port", RANDOM_PORT);
-            cassandraConfiguration.put("rpc_port", RANDOM_PORT);
             cassandraConfiguration.put("native_transport_port", RANDOM_PORT);
         }
 
@@ -1002,7 +991,6 @@ public class CCMBridge implements CCMAccess {
 
             Map<String, Object> cassandraConfiguration = randomizePorts(this.cassandraConfiguration);
             int storagePort = Integer.parseInt(cassandraConfiguration.get("storage_port").toString());
-            int thriftPort = Integer.parseInt(cassandraConfiguration.get("rpc_port").toString());
             int binaryPort = Integer.parseInt(cassandraConfiguration.get("native_transport_port").toString());
             if (!isThriftSupported(cassandraVersion)) {
                 // remove thrift configuration
@@ -1010,7 +998,7 @@ public class CCMBridge implements CCMAccess {
                 cassandraConfiguration.remove("rpc_port");
                 cassandraConfiguration.remove("thrift_prepared_statements_cache_size_mb");
             }
-            final CCMBridge ccm = new CCMBridge(clusterName, cassandraVersion, dseVersion, storagePort, thriftPort, binaryPort, joinJvmArgs(), nodes);
+            final CCMBridge ccm = new CCMBridge(clusterName, cassandraVersion, dseVersion, storagePort, binaryPort, joinJvmArgs(), nodes);
 
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
@@ -1128,7 +1116,6 @@ public class CCMBridge implements CCMAccess {
                         while ((line = br.readLine()) != null) {
                             line = line
                                     .replace("9042", Integer.toString(ccm.binaryPort))
-                                    .replace("9160", Integer.toString(ccm.thriftPort))
                                     .replace("7000", Integer.toString(ccm.storagePort));
                             if (line.startsWith("jmx_port")) {
                                 line = String.format("jmx_port: '%s'", jmxPort);

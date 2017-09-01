@@ -108,11 +108,6 @@ public class CCMTestsSupport {
         }
 
         @Override
-        public int getThriftPort() {
-            return delegate.getThriftPort();
-        }
-
-        @Override
         public int getBinaryPort() {
             return delegate.getBinaryPort();
         }

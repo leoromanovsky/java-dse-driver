@@ -65,11 +65,6 @@ public interface CCMAccess extends Closeable {
     int getStoragePort();
 
     /**
-     * @return The thrift port for this CCM cluster.
-     */
-    int getThriftPort();
-
-    /**
      * @return The binary port for this CCM cluster.
      */
     int getBinaryPort();
